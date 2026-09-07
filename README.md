@@ -2,6 +2,7 @@
 
 **Tytuł:** Dokumentacja aplikacji BMI  
 **Imię i nazwisko zdającego:** Izabela
+
 **Numer PESEL:** XYZ  
 **Data wykonania:** 07.09.2026.  
 
