@@ -1,0 +1,7 @@
+Nr testu Dane wejściowe (wzrost, masa) Oczekiwane BMI                   Oczekiwana interpretacja                    Wynik testu
+1           1,75 m, 70 kg               22,86                           Waga prawidłowa                             Pozytywny
+2           1,60 m, 45 kg               17,58                           Niedowaga                                   Pozytywny
+3           1,80 m, 90 kg               27,78                           Nadwaga                                     Pozytywny
+4           1,70 m, 95 kg               32,87                           Otyłość                                     Pozytywny
+5           1,75 m, 1 kg                Błąd (ValueError)               Odrzucenie wartości (waga < 2 kg)           Pozytywny
+6           0,40 m, 70 kg               Błąd (ValueError)               Odrzucenie wartości (wzrost < 0,5 m)        Pozytywny

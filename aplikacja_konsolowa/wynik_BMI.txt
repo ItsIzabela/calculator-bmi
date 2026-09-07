@@ -1,0 +1,4 @@
+Waga: 59.0 kg
+Wzrost: 1.7 m
+Wynik BMI: 20.42
+Interpretacja BMI: waga prawidlowa
