@@ -1,7 +1,7 @@
 # DOKUMENTACJA APLIKACJI BMI
 
 **Tytuł:** Dokumentacja aplikacji BMI  
-**Imię i nazwisko zdającego:** Izabela Majcherczyk  
+**Imię i nazwisko zdającego:** XYZ  
 **Numer PESEL:** XYZ  
 **Data wykonania:** 07.09.2026.  
 
