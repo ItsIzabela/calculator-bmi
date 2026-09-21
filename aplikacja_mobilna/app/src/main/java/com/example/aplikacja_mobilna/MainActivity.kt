@@ -13,13 +13,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,6 +41,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.foundation.layout.Row
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,24 +61,25 @@ class MainActivity : ComponentActivity() {
 fun AppContent(modifier: Modifier = Modifier) {
     val context = LocalContext.current
 
-    // stan pól tekstowych
     var weightInput by remember { mutableStateOf("") }
     var heightInput by remember { mutableStateOf("") }
 
-    // stan walidacji i błędów
     var weightError by remember { mutableStateOf<String?>(null) }
     var heightError by remember { mutableStateOf<String?>(null) }
 
-    // stan wyniku obliczeń BMI oraz interpretacji
     var bmiResultText by remember { mutableStateOf<String?>(null) }
     var bmiCategoryText by remember { mutableStateOf<String?>(null) }
+
+    var historyList by remember { mutableStateOf(listOf<String>()) }
+    LaunchedEffect(Unit) {
+        historyList = loadHistory(context)
+    }
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = "Kalkulator BMI",
@@ -81,21 +89,18 @@ fun AppContent(modifier: Modifier = Modifier) {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // wprowadzania wagi
         OutlinedTextField(
             value = weightInput,
-            onValueChange = { newValue ->
-                val sanitized = newValue.replace(',', '.')
+            onValueChange = {
+                val sanitized = it.replace(',', '.')
                 if (sanitized.isEmpty() || sanitized.matches(Regex("^\\d*\\.?\\d*$"))) {
                     weightInput = sanitized
-                    weightError = null // Wyczyszczenie błędu po zmianie tekstu
+                    weightError = null
                 }
             },
             label = { Text("Masa ciała (kg)") },
             isError = weightError != null,
-            supportingText = {
-                weightError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            },
+            supportingText = { weightError?.let { Text(it) } },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
@@ -103,20 +108,17 @@ fun AppContent(modifier: Modifier = Modifier) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // pole wprowadzenia wzrostu
         OutlinedTextField(
             value = heightInput,
-            onValueChange = { newValue ->
-                if (newValue.all { it.isDigit() }) {
-                    heightInput = newValue
-                    heightError = null // Wyczyszczenie błędu po zmianie tekstu
+            onValueChange = {
+                if (it.all { char -> char.isDigit() }) {
+                    heightInput = it
+                    heightError = null
                 }
             },
             label = { Text("Wzrost (cm)") },
             isError = heightError != null,
-            supportingText = {
-                heightError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            },
+            supportingText = { heightError?.let { Text(it) } },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
@@ -124,94 +126,106 @@ fun AppContent(modifier: Modifier = Modifier) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // przycisk obliczajacy
         Button(
             onClick = {
-                // walidacja danych wejściowych
-                val weightNum = weightInput.toDoubleOrNull()
-                val heightNum = heightInput.toDoubleOrNull()
+                val weight = weightInput.toDoubleOrNull()
+                val height = heightInput.toDoubleOrNull()
 
-                var isValid = true
-
-                if (weightNum == null || weightNum <= 0 || weightNum > 300) {
-                    weightError = "Wprowadź poprawną wagę (1-300 kg)"
-                    isValid = false
+                if (weight == null || weight !in 1.0..300.0) {
+                    weightError = "Błędna waga (1-300)"
+                    return@Button
+                }
+                if (height == null || height !in 1.0..250.0) {
+                    heightError = "Błędny wzrost (1-250)"
+                    return@Button
                 }
 
-                if (heightNum == null || heightNum <= 0 || heightNum > 250) {
-                    heightError = "Wprowadź poprawny wzrost (1-250 cm)"
-                    isValid = false
+                val heightM = height / 100.0
+                val bmi = weight / (heightM * heightM)
+                val category = when {
+                    bmi < 18.5 -> "Niedowaga"
+                    bmi < 25.0 -> "Waga prawidłowa"
+                    bmi < 30.0 -> "Nadwaga"
+                    else -> "Otyłość"
                 }
 
-                // jesli walidacja jest prawidlowa
-                if (isValid && weightNum != null && heightNum != null) {
-                    val heightInMeters = heightNum / 100.0
-                    val bmi = weightNum / (heightInMeters * heightInMeters)
-
-                    // interpretacja wyniku
-                    val category = when {
-                        bmi < 18.5 -> "Niedowaga"
-                        bmi < 25.0 -> "Waga prawidłowa"
-                        bmi < 30.0 -> "Nadwaga"
-                        else -> "Otyłość"
-                    }
-
-                    bmiResultText = "Twój wynik BMI: %.2f".format(Locale.US, bmi)
-                    bmiCategoryText = "Interpretacja: $category"
-                }
+                bmiResultText = "BMI: %.2f".format(Locale.US, bmi)
+                bmiCategoryText = category
             },
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Oblicz BMI")
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // sekcja wyswietlania i zapisu
         bmiResultText?.let { result ->
-            Text(
-                text = result,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            bmiCategoryText?.let { category ->
-                Text(
-                    text = category,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // przycisk zapisujacy wynik
-            Button(
-                onClick = {
-                    saveBmiResultToFile(context, result, bmiCategoryText ?: "")
-                },
-                modifier = Modifier.fillMaxWidth()
+            Card(
+                modifier = Modifier.padding(vertical = 16.dp).fillMaxWidth(),
+                colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
             ) {
-                Text("Zapisz wynik do pliku")
+                Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = result, style = MaterialTheme.typography.titleLarge)
+                    Text(text = bmiCategoryText ?: "", color = MaterialTheme.colorScheme.primary)
+
+                    Button(
+                        onClick = {
+                            saveBmiResultToFile(context, result, bmiCategoryText ?: "")
+                            historyList = loadHistory(context)
+                        },
+                        modifier = Modifier.padding(top = 8.dp)
+                    ) {
+                        Text("Zapisz do historii")
+                    }
+                }
+            }
+        }
+
+        Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Historia pomiarów:", fontWeight = FontWeight.Bold)
+            TextButton(onClick = {
+                clearHistory(context)
+                historyList = emptyList()
+            }) {
+                Text("Wyczyść")
+            }
+        }
+
+        LazyColumn(modifier = Modifier.fillMaxWidth()) {
+            items(historyList.reversed()) { record ->
+                Text(
+                    text = record,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
             }
         }
     }
 }
 
-/**
- * funkcja zapisujaca dane do pliku
- */
-private fun saveBmiResultToFile(context: Context, bmiText: String, categoryText: String) {
+private fun saveBmiResultToFile(context: Context, bmi: String, category: String) {
     try {
-        val fileName = "historia_bmi.txt"
-        val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
-        val record = "$timestamp | $bmiText | $categoryText\n"
-
-        // zapis do pliku
-        val file = File(context.filesDir, fileName)
-        file.appendText(record)
-
-        Toast.makeText(context, "Zapisano do pliku: ${file.name}", Toast.LENGTH_LONG).show()
+        val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date())
+        val record = "$timestamp | $bmi | $category\n"
+        context.openFileOutput("historia_bmi.txt", Context.MODE_APPEND).use {
+            it.write(record.toByteArray())
+        }
+        Toast.makeText(context, "Zapisano!", Toast.LENGTH_SHORT).show()
     } catch (e: Exception) {
-        Toast.makeText(context, "Błąd podczas zapisu do pliku", Toast.LENGTH_SHORT).show()
+        e.printStackTrace()
     }
+}
+
+private fun loadHistory(context: Context): List<String> {
+    val file = File(context.filesDir, "historia_bmi.txt")
+    return if (file.exists()) file.readLines() else emptyList()
+}
+
+private fun clearHistory(context: Context) {
+    val file = File(context.filesDir, "historia_bmi.txt")
+    if (file.exists()) file.delete()
 }
